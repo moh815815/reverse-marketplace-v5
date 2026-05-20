@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>سوق المزايدة العكسية | Reverse Marketplace</title>
+<meta name="description" content="ضع طلبك وانتظر التجار يتنافسون على أسعارهم — نظام المزاد العكسي الأول في مصر"/>
+<meta name="theme-color" content="#0f4c81"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="سوق المزايدة"/>
+<link rel="manifest" href="/manifest.json"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root {
+    --primary: #0f4c81;
+    --accent:  #f59e0b;
+    --success: #10b981;
+    --danger:  #ef4444;
+    --bg:      #f1f5f9;
+    --card:    #ffffff;
+  }
+  * { font-family: 'Cairo', sans-serif; }
+  body { background: var(--bg); }
+
+  /* ── Sidebar ── */
+  #sidebar { transition: transform .3s ease; }
+  #sidebar.hidden-mobile { transform: translateX(100%); }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+  .card-hover { transition: transform .2s, box-shadow .2s; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+  /* ── Buttons ── */
+  .btn-primary { background: var(--primary); color: #fff; border-radius: 10px; padding: .65rem 1.4rem; font-weight: 700; transition: opacity .2s; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-accent  { background: var(--accent); color: #fff; border-radius: 10px; padding: .65rem 1.4rem; font-weight: 700; transition: opacity .2s; }
+  .btn-accent:hover  { opacity: .88; }
+  .btn-outline { border: 2px solid var(--primary); color: var(--primary); border-radius: 10px; padding: .6rem 1.3rem; font-weight: 600; transition: all .2s; }
+  .btn-outline:hover { background: var(--primary); color: #fff; }
+
+  /* ── Status badges ── */
+  .badge-active  { background: #dcfce7; color: #166534; }
+  .badge-expired { background: #fee2e2; color: #991b1b; }
+  .badge-closed  { background: #dbeafe; color: #1e40af; }
+  .badge-scraping{ background: #fef3c7; color: #92400e; }
+  .badge { border-radius: 999px; padding: 2px 12px; font-size:.75rem; font-weight:700; }
+
+  /* ── Input ── */
+  .inp { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: .65rem 1rem; width: 100%; outline: none; transition: border .2s; font-family:'Cairo',sans-serif; }
+  .inp:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,76,129,.1); }
+
+  /* ── Nav ── */
+  nav { background: var(--primary); }
+  .nav-link { color: rgba(255,255,255,.8); padding: .5rem 1rem; border-radius: 8px; font-weight:600; cursor:pointer; transition: all .2s; }
+  .nav-link:hover, .nav-link.active { color: #fff; background: rgba(255,255,255,.15); }
+
+  /* ── Loader ── */
+  .spinner { width:32px; height:32px; border:3px solid #e2e8f0; border-top-color: var(--primary); border-radius:50%; animation: spin .7s linear infinite; margin: auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Scraper card ── */
+  .scraper-card { background: linear-gradient(135deg, #0f4c81 0%, #1e3a5f 100%); color:#fff; border-radius:14px; }
+  .source-amazon    { background:#ff9900; }
+  .source-noon      { background:#fecc00; color:#333; }
+  .source-aliexpress{ background:#e62117; }
+
+  /* ── Deal card ── */
+  .deal-card { border: 2px solid transparent; transition: border .2s; }
+  .deal-card:hover { border-color: var(--accent); }
+
+  /* ── Modal ── */
+  #modal-overlay { background: rgba(0,0,0,.5); backdrop-filter: blur(4px); }
+  .modal { background: #fff; border-radius: 18px; max-width: 540px; width: 96%; max-height: 90vh; overflow-y: auto; }
+
+  /* ── Toast ── */
+  #toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); z-index:9999; transition: opacity .4s; }
+  #toast.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── Countdown ── */
+  .countdown { font-variant-numeric: tabular-nums; }
+
+  /* ── Star rating ── */
+  .stars { color: #f59e0b; }
+
+  /* ── Tab ── */
+  .tab-btn { padding:.55rem 1.2rem; border-radius:8px; font-weight:600; cursor:pointer; transition: all .2s; color:#64748b; }
+  .tab-btn.active { background: var(--primary); color:#fff; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══════════════ NAVBAR ═══════════════ -->
+<nav class="sticky top-0 z-50 shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <button id="menu-toggle" class="md:hidden text-white text-xl"><i class="fa fa-bars"></i></button>
+      <div class="flex items-center gap-2 cursor-pointer" onclick="showSection('home')">
+        <div class="w-9 h-9 bg-amber-400 rounded-xl flex items-center justify-center">
+          <i class="fa fa-gavel text-white"></i>
+        </div>
+        <span class="text-white font-black text-lg hidden sm:block">سوق المزايدة</span>
+      </div>
+    </div>
+
+    <!-- Desktop Nav -->
+    <div class="hidden md:flex items-center gap-1">
+      <span class="nav-link active" onclick="showSection('home')" data-section="home"><i class="fa fa-home ml-1"></i>الرئيسية</span>
+      <span class="nav-link" onclick="showSection('requests')" data-section="requests"><i class="fa fa-list-alt ml-1"></i>الطلبات</span>
+      <span class="nav-link" onclick="showSection('deals')" data-section="deals"><i class="fa fa-tags ml-1"></i>عروض AI</span>
+      <span class="nav-link customer-only hidden" onclick="showSection('my-requests')" data-section="my-requests"><i class="fa fa-clipboard-list ml-1"></i>طلباتي</span>
+      <span class="nav-link merchant-only hidden" onclick="showSection('merchant')" data-section="merchant"><i class="fa fa-store ml-1"></i>لوحة التاجر</span>
+      <span class="nav-link admin-only hidden" onclick="showSection('admin')" data-section="admin"><i class="fa fa-chart-bar ml-1"></i>الإدارة</span>
+    </div>
+
+    <!-- Auth Buttons -->
+    <div class="flex items-center gap-2">
+      <div id="guest-btns" class="flex gap-2">
+        <button class="btn-outline text-white border-white text-sm" onclick="openModal('login')">دخول</button>
+        <button class="btn-accent text-sm hidden sm:block" onclick="openModal('register')">تسجيل</button>
+      </div>
+      <div id="user-info" class="hidden items-center gap-2">
+        <!-- Notification Bell -->
+        <button class="relative text-white/80 hover:text-white text-xl p-1" onclick="openModal('notifications')" title="الإشعارات">
+          <i class="fa fa-bell"></i>
+          <span id="notif-badge" class="hidden absolute -top-1 -left-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"></span>
+        </button>
+        <span id="user-name" class="text-white font-semibold text-sm hidden sm:block"></span>
+        <button class="bg-white/20 text-white rounded-lg px-2 py-1.5 text-sm hover:bg-white/30" onclick="openModal('profileSettings')" title="إعدادات الحساب"><i class="fa fa-cog"></i></button>
+        <button class="bg-white/20 text-white rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-white/30" onclick="logout()">خروج</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Sidebar -->
+<div id="sidebar" class="fixed top-0 right-0 h-full w-72 bg-white z-50 shadow-2xl p-6 hidden-mobile">
+  <div class="flex justify-between items-center mb-6">
+    <span class="font-black text-xl text-blue-900">القائمة</span>
+    <button onclick="closeSidebar()" class="text-gray-500 text-2xl"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="flex flex-col gap-2">
+    <button class="text-right py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 text-blue-900" onclick="showSection('home');closeSidebar()"><i class="fa fa-home ml-2"></i>الرئيسية</button>
+    <button class="text-right py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 text-blue-900" onclick="showSection('requests');closeSidebar()"><i class="fa fa-list-alt ml-2"></i>الطلبات</button>
+    <button class="text-right py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 text-blue-900" onclick="showSection('deals');closeSidebar()"><i class="fa fa-tags ml-2"></i>عروض AI</button>
+    <button id="mob-my-requests" class="hidden text-right py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 text-blue-900" onclick="showSection('my-requests');closeSidebar()"><i class="fa fa-clipboard-list ml-2"></i>طلباتي</button>
+    <button id="mob-merchant" class="hidden text-right py-3 px-4 rounded-xl font-semibold hover:bg-blue-50 text-blue-900" onclick="showSection('merchant');closeSidebar()"><i class="fa fa-store ml-2"></i>لوحة التاجر</button>
+    <hr class="my-2"/>
+    <button class="text-right py-3 px-4 rounded-xl font-semibold text-green-700 hover:bg-green-50" onclick="openModal('register');closeSidebar()"><i class="fa fa-user-plus ml-2"></i>إنشاء حساب</button>
+    <button class="text-right py-3 px-4 rounded-xl font-semibold text-blue-700 hover:bg-blue-50" onclick="openModal('login');closeSidebar()"><i class="fa fa-sign-in-alt ml-2"></i>تسجيل الدخول</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+<main class="max-w-7xl mx-auto px-4 py-6">
+
+<!-- ──── HOME SECTION ──── -->
+<section id="sec-home">
+  <!-- Hero -->
+  <div class="scraper-card p-8 mb-8 text-center relative overflow-hidden">
+    <div class="absolute inset-0 opacity-10" style="background: repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%) center/20px 20px;"></div>
+    <div class="relative z-10">
+      <div class="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 rounded-full px-4 py-1.5 text-sm font-bold mb-4">
+        <i class="fa fa-bolt"></i> نظام المزاد العكسي الأول في مصر
+      </div>
+      <h1 class="text-3xl md:text-5xl font-black mb-3">أنت تحدد السعر <span class="text-amber-400">🏷️</span></h1>
+      <p class="text-blue-200 text-lg mb-6 max-w-xl mx-auto">ضع طلبك وانتظر التجار يتنافسون على أسعارهم. السكريبر يبحث لك تلقائياً إذا لم يأتِ عرض!</p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <button class="btn-accent text-lg px-8 py-3" onclick="openModal('newRequest')"><i class="fa fa-plus ml-2"></i>ضع طلب الآن</button>
+        <button class="btn-outline border-white text-white text-lg px-8 py-3" onclick="showSection('requests')"><i class="fa fa-search ml-2"></i>تصفح الطلبات</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats-row">
+    <div class="card p-5 text-center"><div class="text-3xl font-black text-blue-900" id="stat-requests">--</div><div class="text-gray-500 text-sm mt-1">إجمالي الطلبات</div></div>
+    <div class="card p-5 text-center"><div class="text-3xl font-black text-green-600" id="stat-active">--</div><div class="text-gray-500 text-sm mt-1">طلبات نشطة</div></div>
+    <div class="card p-5 text-center"><div class="text-3xl font-black text-amber-500" id="stat-bids">--</div><div class="text-gray-500 text-sm mt-1">عروض مقدمة</div></div>
+    <div class="card p-5 text-center"><div class="text-3xl font-black text-purple-600" id="stat-closed">--</div><div class="text-gray-500 text-sm mt-1">صفقات مكتملة</div></div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card p-6 mb-8">
+    <h2 class="text-xl font-black text-blue-900 mb-5 text-center">كيف يعمل النظام؟</h2>
+    <div class="grid md:grid-cols-4 gap-4">
+      <div class="text-center p-4">
+        <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3">📝</div>
+        <div class="font-bold text-blue-900">1. ضع طلبك</div>
+        <p class="text-gray-500 text-sm mt-1">حدد المنتج والمواصفات والميزانية</p>
+      </div>
+      <div class="text-center p-4">
+        <div class="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3">🔔</div>
+        <div class="font-bold text-blue-900">2. إشعار التجار</div>
+        <p class="text-gray-500 text-sm mt-1">يتلقى تجار منطقتك تنبيه فوري على Telegram</p>
+      </div>
+      <div class="text-center p-4">
+        <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3">⚔️</div>
+        <div class="font-bold text-blue-900">3. المنافسة</div>
+        <p class="text-gray-500 text-sm mt-1">التجار يتنافسون بأسعار أقل من ميزانيتك</p>
+      </div>
+      <div class="text-center p-4">
+        <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3">🤖</div>
+        <div class="font-bold text-blue-900">4. الرادار الاحتياطي</div>
+        <p class="text-gray-500 text-sm mt-1">إذا لم يأتِ عرض، يبحث الرادار في Amazon و Noon</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Requests Preview -->
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-black text-blue-900">أحدث الطلبات</h2>
+    <button class="text-blue-600 font-semibold hover:underline" onclick="showSection('requests')">عرض الكل <i class="fa fa-arrow-left mr-1"></i></button>
+  </div>
+  <div id="home-requests" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+</section>
+
+<!-- ──── REQUESTS SECTION ──── -->
+<section id="sec-requests" class="hidden">
+  <div class="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center justify-between">
+    <h2 class="text-2xl font-black text-blue-900">طلبات الشراء</h2>
+    <button class="btn-primary" onclick="openModal('newRequest')"><i class="fa fa-plus ml-2"></i>طلب جديد</button>
+  </div>
+
+  <!-- Search + Filters -->
+  <div class="card p-4 mb-5 space-y-3">
+    <div class="relative">
+      <i class="fa fa-search absolute top-1/2 -translate-y-1/2 right-3 text-gray-400"></i>
+      <input id="search-input" type="text" placeholder="ابحث في الطلبات..." class="inp pr-9" oninput="debounceSearch()"/>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <select class="inp flex-1 min-w-32" id="filter-region" onchange="loadRequests()">
+        <option value="">كل المناطق</option>
+      </select>
+      <select class="inp flex-1 min-w-32" id="filter-category" onchange="loadRequests()">
+        <option value="">كل التصنيفات</option>
+        <option value="electronics">إلكترونيات</option>
+        <option value="appliances">أجهزة منزلية</option>
+        <option value="furniture">أثاث</option>
+        <option value="clothing">ملابس</option>
+        <option value="automotive">سيارات وقطع غيار</option>
+        <option value="mobiles">موبايلات</option>
+        <option value="computers">كمبيوتر ولاب توب</option>
+        <option value="other">أخرى</option>
+      </select>
+      <select class="inp flex-1 min-w-32" id="filter-sort" onchange="loadRequests()">
+        <option value="active">نشطة</option>
+        <option value="closed">مكتملة</option>
+        <option value="expired">منتهية</option>
+      </select>
+      <button class="btn-outline px-4 py-2 text-sm" onclick="loadRequests()"><i class="fa fa-sync"></i></button>
+    </div>
+  </div>
+
+  <div id="requests-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="col-span-full text-center py-12"><div class="spinner"></div></div>
+  </div>
+
+  <div class="text-center mt-6" id="load-more-btn" style="display:none">
+    <button class="btn-outline px-8 py-3" onclick="loadMoreRequests()">تحميل المزيد</button>
+  </div>
+</section>
+
+<!-- ──── DEALS SECTION ──── -->
+<section id="sec-deals" class="hidden">
+  <div class="scraper-card p-6 mb-6 flex items-center gap-4">
+    <div class="text-4xl">🤖</div>
+    <div>
+      <h2 class="text-2xl font-black">عروض AI والكلاود</h2>
+      <p class="text-blue-200 text-sm">أفضل اشتراكات الذكاء الاصطناعي وخدمات الكلاود بأسعار مميزة</p>
+    </div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div class="flex gap-2 mb-5 overflow-x-auto pb-1">
+    <button class="tab-btn active whitespace-nowrap" onclick="filterDeals('all', this)">الكل</button>
+    <button class="tab-btn whitespace-nowrap" onclick="filterDeals('ai_subscription', this)">🤖 اشتراكات AI</button>
+    <button class="tab-btn whitespace-nowrap" onclick="filterDeals('cloud', this)">☁️ كلاود</button>
+    <button class="tab-btn whitespace-nowrap" onclick="filterDeals('saas', this)">💼 SaaS</button>
+    <button class="tab-btn whitespace-nowrap" onclick="filterDeals('hosting', this)">🌐 استضافة</button>
+  </div>
+
+  <div id="deals-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="col-span-full text-center py-12"><div class="spinner"></div></div>
+  </div>
+</section>
+
+<!-- ──── MERCHANT SECTION ──── -->
+<section id="sec-merchant" class="hidden">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-black text-blue-900">لوحة التاجر</h2>
+    <div class="flex gap-3">
+      <div class="tab-btn active" onclick="merchantTab('available', this)">الطلبات المتاحة</div>
+      <div class="tab-btn" onclick="merchantTab('mybids', this)">عروضي</div>
+    </div>
+  </div>
+
+  <!-- Available Requests -->
+  <div id="merchant-available">
+    <div class="card p-4 mb-4 flex flex-wrap gap-3">
+      <select class="inp flex-1 min-w-40" id="m-filter-region" onchange="loadMerchantRequests()">
+        <option value="">كل المناطق</option>
+      </select>
+      <select class="inp flex-1 min-w-40" id="m-filter-category" onchange="loadMerchantRequests()">
+        <option value="">كل التصنيفات</option>
+        <option value="electronics">إلكترونيات</option>
+        <option value="appliances">أجهزة منزلية</option>
+        <option value="furniture">أثاث</option>
+        <option value="computers">كمبيوتر ولاب توب</option>
+        <option value="mobiles">موبايلات</option>
+        <option value="other">أخرى</option>
+      </select>
+    </div>
+    <div id="merchant-requests-list" class="grid md:grid-cols-2 gap-4">
+      <div class="col-span-full text-center py-12"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- My Bids -->
+  <div id="merchant-mybids" class="hidden">
+    <div id="my-bids-list" class="grid md:grid-cols-2 gap-4">
+      <div class="col-span-full text-center py-12"><div class="spinner"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ──── ADMIN SECTION ──── -->
+<section id="sec-admin" class="hidden">
+  <h2 class="text-2xl font-black text-blue-900 mb-6">لوحة الإدارة</h2>
+  <div id="admin-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="card p-5">
+      <h3 class="font-bold text-blue-900 mb-4">الطلبات حسب المنطقة</h3>
+      <div id="admin-regions"></div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold text-blue-900 mb-4">الطلبات حسب التصنيف</h3>
+      <div id="admin-categories"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ──── MY REQUESTS SECTION (للزبون) ──── -->
+<section id="sec-my-requests" class="hidden">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-black text-blue-900">طلباتي</h2>
+    <button class="btn-primary" onclick="openModal('newRequest')"><i class="fa fa-plus ml-2"></i>طلب جديد</button>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-3 gap-3 mb-6" id="my-req-stats">
+    <div class="card p-4 text-center"><div class="text-2xl font-black text-blue-900" id="mstat-active">-</div><div class="text-xs text-gray-500 mt-1">نشطة</div></div>
+    <div class="card p-4 text-center"><div class="text-2xl font-black text-green-600" id="mstat-closed">-</div><div class="text-xs text-gray-500 mt-1">مكتملة</div></div>
+    <div class="card p-4 text-center"><div class="text-2xl font-black text-amber-500" id="mstat-bids">-</div><div class="text-xs text-gray-500 mt-1">عروض استلمتها</div></div>
+  </div>
+
+  <div id="my-requests-list" class="space-y-4">
+    <div class="text-center py-12"><div class="spinner"></div></div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══════════════ BOTTOM NAV (Mobile) ═══════════════ -->
+<nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t z-40 flex">
+  <button class="flex-1 py-3 flex flex-col items-center gap-0.5 text-gray-400 hover:text-blue-900 active:scale-95 transition-transform" onclick="showSection('home')">
+    <i class="fa fa-home text-xl"></i><span class="text-xs font-semibold">الرئيسية</span>
+  </button>
+  <button class="flex-1 py-3 flex flex-col items-center gap-0.5 text-gray-400 hover:text-blue-900 active:scale-95 transition-transform" onclick="showSection('requests')">
+    <i class="fa fa-list-alt text-xl"></i><span class="text-xs font-semibold">الطلبات</span>
+  </button>
+  <button class="flex-1 py-3 -mt-4 flex flex-col items-center" onclick="openModal('newRequest')">
+    <div class="w-14 h-14 bg-blue-900 rounded-full flex items-center justify-center shadow-lg">
+      <i class="fa fa-plus text-white text-xl"></i>
+    </div>
+  </button>
+  <button class="flex-1 py-3 flex flex-col items-center gap-0.5 text-gray-400 hover:text-blue-900 active:scale-95 transition-transform" onclick="showSection('deals')">
+    <i class="fa fa-tags text-xl"></i><span class="text-xs font-semibold">AI</span>
+  </button>
+  <button class="flex-1 py-3 flex flex-col items-center gap-0.5 text-gray-400 hover:text-blue-900 active:scale-95 transition-transform" id="bottom-profile-btn" onclick="user ? showSection(user.role==='merchant'?'merchant':'my-requests') : openModal('login')">
+    <i class="fa fa-user text-xl"></i><span class="text-xs font-semibold">حسابي</span>
+  </button>
+</nav>
+<div class="md:hidden h-16"></div><!-- spacer for bottom nav -->
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+<div id="modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+  <div class="modal p-6 shadow-2xl w-full">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ REQUEST DETAIL DRAWER ═══════════════ -->
+<div id="drawer-overlay" class="fixed inset-0 z-40 hidden" style="background:rgba(0,0,0,.5)">
+  <div id="drawer" class="fixed top-0 left-0 h-full w-full max-w-2xl bg-white shadow-2xl overflow-y-auto transition-transform" style="transform:translateX(-100%)">
+    <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+      <h3 class="font-black text-xl text-blue-900" id="drawer-title">تفاصيل الطلب</h3>
+      <button onclick="closeDrawer()" class="text-gray-400 text-2xl hover:text-gray-600"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="drawer-content" class="p-5"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ TOAST ═══════════════ -->
+<div id="toast" class="hidden">
+  <div id="toast-inner" class="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl font-semibold flex items-center gap-3"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const API = '/api';
+let token = localStorage.getItem('rmToken') || null;
+let user  = JSON.parse(localStorage.getItem('rmUser') || 'null');
+let allDeals = [];
+let reqPage  = 1;
+let reqTotal = 0;
+const CATEGORIES = { electronics:'إلكترونيات', appliances:'أجهزة منزلية', furniture:'أثاث', clothing:'ملابس', automotive:'سيارات', mobiles:'موبايلات', computers:'كمبيوتر', other:'أخرى' };
+
+// ─── Security: XSS Prevention ──────────────────────────────────
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+// ─── UI: Prevent double-submit ─────────────────────────────────
+function setLoading(btnEl, loading, text = '') {
+  if (!btnEl) return;
+  btnEl.disabled = loading;
+  if (loading) {
+    btnEl._orig = btnEl.innerHTML;
+    btnEl.innerHTML = '<i class="fa fa-spinner fa-spin ml-2"></i>جاري...';
+  } else {
+    btnEl.innerHTML = btnEl._orig || text;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  applyAuth();
+  loadRegions();
+  loadHomeData();
+  loadDeals();
+  document.getElementById('menu-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('hidden-mobile');
+  });
+  document.getElementById('drawer-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('drawer-overlay')) closeDrawer();
+  });
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  API HELPER
+// ═══════════════════════════════════════════════════════
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(API + path, { headers, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || 'خطأ في الطلب');
+  }
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════════
+function applyAuth() {
+  if (user) {
+    document.getElementById('guest-btns').classList.add('hidden');
+    document.getElementById('user-info').classList.remove('hidden');
+    document.getElementById('user-info').classList.add('flex');
+    document.getElementById('user-name').textContent = user.name;
+    if (user.role === 'merchant' || user.role === 'admin') {
+      document.querySelectorAll('.merchant-only').forEach(el => el.classList.remove('hidden'));
+      document.getElementById('mob-merchant').classList.remove('hidden');
+    }
+    if (user.role === 'customer' || user.role === 'admin') {
+      document.querySelectorAll('.customer-only').forEach(el => el.classList.remove('hidden'));
+      document.getElementById('mob-my-requests')?.classList.remove('hidden');
+    }
+    if (user.role === 'admin') {
+      document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+    }
+    // بدء استطلاع الإشعارات
+    loadNotifCount();
+    setInterval(loadNotifCount, 60000);
+  } else {
+    document.getElementById('guest-btns').classList.remove('hidden');
+    document.getElementById('user-info').classList.add('hidden');
+  }
+}
+
+function logout() {
+  token = null; user = null;
+  localStorage.removeItem('rmToken'); localStorage.removeItem('rmUser');
+  applyAuth(); showSection('home');
+  toast('تم تسجيل الخروج', 'info');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SECTIONS
+// ═══════════════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+  const sec = document.getElementById(`sec-${name}`);
+  if (!sec) return;
+  sec.classList.remove('hidden');
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.section === name));
+  if (name === 'requests')    loadRequests();
+  if (name === 'my-requests') loadMyRequests();
+  if (name === 'merchant')    { if (!user) { openModal('login'); return; } loadMerchantRequests(); }
+  if (name === 'admin')       { if (user?.role !== 'admin') { toast('ليس لديك صلاحية', 'error'); return; } loadAdminStats(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOME DATA
+// ═══════════════════════════════════════════════════════
+async function loadHomeData() {
+  try {
+    const [data, stats] = await Promise.allSettled([
+      api('/requests?limit=6&status=active'),
+      api('/stats')
+    ]);
+    if (data.status === 'fulfilled') renderRequestCards(data.value.requests, 'home-requests', true);
+    if (stats.status === 'fulfilled') {
+      const s = stats.value;
+      document.getElementById('stat-requests').textContent = s.total_requests || 0;
+      document.getElementById('stat-active').textContent   = s.active_requests || 0;
+      document.getElementById('stat-bids').textContent     = s.total_bids || 0;
+      document.getElementById('stat-closed').textContent   = s.closed_auctions || 0;
+    }
+  } catch (err) { console.error(err); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  REGIONS
+// ═══════════════════════════════════════════════════════
+async function loadRegions() {
+  try {
+    const regions = await api('/auth/regions');
+    const selectors = ['#filter-region','#m-filter-region','#new-req-region','#reg-region'];
+    selectors.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      regions.forEach(r => {
+        const opt = new Option(`${r.name} - ${r.city}`, r.name);
+        el.appendChild(opt);
+      });
+    });
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  REQUESTS
+// ═══════════════════════════════════════════════════════
+async function loadRequests(reset = true) {
+  if (reset) reqPage = 1;
+  const region   = document.getElementById('filter-region')?.value   || '';
+  const category = document.getElementById('filter-category')?.value || '';
+  const status   = document.getElementById('filter-sort')?.value     || 'active';
+  const search   = document.getElementById('search-input')?.value?.trim() || '';
+
+  document.getElementById('requests-list').innerHTML = '<div class="col-span-full text-center py-12"><div class="spinner"></div></div>';
+
+  try {
+    let url = `/requests?region=${encodeURIComponent(region)}&category=${encodeURIComponent(category)}&status=${status}&page=${reqPage}&limit=12`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    const data = await api(url);
+    reqTotal = data.total;
+    // فلترة جانب العميل كاحتياط إذا البحث لم يُطبَّق من الـ backend
+    const filtered = search
+      ? data.requests.filter(r => r.title.includes(search) || r.description.includes(search))
+      : data.requests;
+    renderRequestCards(filtered, 'requests-list');
+    document.getElementById('load-more-btn').style.display = data.requests.length < data.total ? 'block' : 'none';
+  } catch (err) {
+    document.getElementById('requests-list').innerHTML = `<div class="col-span-full text-center py-12 text-red-500"><i class="fa fa-exclamation-circle text-3xl mb-2 block"></i>${err.message}</div>`;
+  }
+}
+
+async function loadMoreRequests() {
+  reqPage++;
+  const region   = document.getElementById('filter-region')?.value   || '';
+  const category = document.getElementById('filter-category')?.value || '';
+  const status   = document.getElementById('filter-sort')?.value     || 'active';
+  const data = await api(`/requests?region=${region}&category=${category}&status=${status}&page=${reqPage}&limit=12`);
+  data.requests.forEach(r => {
+    const el = document.createElement('div');
+    el.innerHTML = requestCard(r);
+    document.getElementById('requests-list').appendChild(el.firstChild);
+  });
+  if (reqPage * 12 >= reqTotal) document.getElementById('load-more-btn').style.display = 'none';
+}
+
+function renderRequestCards(requests, containerId, mini = false) {
+  const el = document.getElementById(containerId);
+  if (!requests.length) {
+    el.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><i class="fa fa-inbox text-5xl mb-3 block"></i><p class="text-lg">لا توجد طلبات حالياً</p></div>';
+    return;
+  }
+  el.innerHTML = requests.map(r => requestCard(r, mini)).join('');
+}
+
+function requestCard(r, mini = false) {
+  const statusMap  = { active:'badge-active', expired:'badge-expired', closed:'badge-closed', scraping:'badge-scraping' };
+  const statusText = { active:'نشط', expired:'منتهي', closed:'مكتمل', scraping:'جاري البحث...' };
+  const timeLeft   = timeRemaining(r.expires_at);
+  const catLabel   = CATEGORIES[r.category] || esc(r.category);
+
+  return `
+  <div class="card card-hover p-5 cursor-pointer" onclick="openRequest('${esc(r.uuid)}')">
+    <div class="flex justify-between items-start mb-3">
+      <span class="badge ${statusMap[r.status] || 'badge-active'}">${statusText[r.status] || esc(r.status)}</span>
+      <span class="text-xs text-gray-400"><i class="fa fa-map-marker-alt ml-1"></i>${esc(r.region)}</span>
+    </div>
+    <h3 class="font-bold text-blue-900 text-base mb-1 leading-snug">${esc(r.title)}</h3>
+    <p class="text-gray-500 text-sm mb-3 line-clamp-2">${esc(r.description)}</p>
+    <div class="flex flex-wrap gap-2 text-xs text-gray-500 mb-3">
+      <span class="bg-gray-100 px-2 py-1 rounded-full">${catLabel}</span>
+      ${r.lowest_bid ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded-full">أقل عرض: ${r.lowest_bid} ج</span>` : ''}
+    </div>
+    <div class="flex justify-between items-center">
+      <div class="font-black text-lg text-blue-900">${(r.budget_max||0).toLocaleString()} <span class="text-sm font-normal text-gray-400">جنيه</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-gray-500"><i class="fa fa-gavel ml-1"></i>${r.bids_count || 0}</span>
+        ${r.status === 'active' ? `<span class="text-amber-600 font-semibold countdown" data-expires="${esc(r.expires_at)}">${timeLeft}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  REQUEST DETAIL DRAWER
+// ═══════════════════════════════════════════════════════
+async function openRequest(uuid) {
+  window._currentRequestUUID = uuid; // ← Fix: store for post-bid refresh
+  openDrawer('جاري التحميل...');
+  try {
+    const r = await api(`/requests/${uuid}`);
+    document.getElementById('drawer-title').textContent = r.title;
+    const bidsHtml = r.bids.length
+      ? r.bids.map((b, i) => bidCard(b, r, i === 0)).join('')
+      : `<div class="text-center py-8 text-gray-400"><i class="fa fa-gavel text-4xl mb-2 block"></i>لا توجد عروض بعد</div>`;
+
+    const scraperHtml = r.scraperResults?.length
+      ? `<div class="mt-6">
+          <div class="flex items-center gap-2 mb-3"><div class="w-2 h-6 bg-blue-900 rounded-full"></div><h4 class="font-bold text-blue-900">نتائج رادار الأسعار</h4></div>
+          ${r.scraperResults.map(s => scraperResultCard(s)).join('')}
+        </div>` : '';
+
+    document.getElementById('drawer-content').innerHTML = `
+      <div class="mb-4 flex flex-wrap gap-2">
+        <span class="badge badge-${r.status === 'active' ? 'active' : r.status === 'closed' ? 'closed' : 'expired'}">${r.status === 'active' ? 'نشط' : r.status === 'closed' ? 'مكتمل' : 'منتهي'}</span>
+        <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full"><i class="fa fa-map-marker-alt ml-1"></i>${esc(r.region)}</span>
+        <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">${CATEGORIES[r.category] || esc(r.category)}</span>
+      </div>
+      <p class="text-gray-600 mb-4 leading-relaxed">${esc(r.description)}</p>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="bg-blue-50 rounded-xl p-4 text-center">
+          <div class="text-2xl font-black text-blue-900">${(r.budget_max||0).toLocaleString()}</div>
+          <div class="text-gray-500 text-sm">الميزانية القصوى (جنيه)</div>
+        </div>
+        <div class="bg-amber-50 rounded-xl p-4 text-center">
+          <div class="text-2xl font-black text-amber-600">${r.bids?.length || 0}</div>
+          <div class="text-gray-500 text-sm">عدد العروض</div>
+        </div>
+      </div>
+      ${r.status === 'active' && user?.role === 'merchant' ? `
+        <button class="btn-primary w-full mb-5" onclick="openModal('newBid', ${r.id})">
+          <i class="fa fa-gavel ml-2"></i>قدّم عرض سعر
+        </button>` : ''}
+      ${r.status === 'active' && user?.id === r.customer_id ? `
+        <button class="btn-outline w-full mb-5 text-amber-600 border-amber-400" onclick="triggerScraper('${esc(r.uuid)}')">
+          <i class="fa fa-robot ml-2"></i>🤖 تشغيل رادار الأسعار الآن
+        </button>` : ''}
+      <div class="mb-2"><div class="flex items-center gap-2 mb-3"><div class="w-2 h-6 bg-blue-900 rounded-full"></div><h4 class="font-bold text-blue-900">العروض المقدمة</h4></div>
+      ${bidsHtml}</div>
+      ${scraperHtml}`;
+  } catch (err) {
+    document.getElementById('drawer-content').innerHTML = `<div class="text-center py-12 text-red-500">${err.message}</div>`;
+  }
+}
+
+function bidCard(b, request, isBest) {
+  const canAccept  = user?.id === request.customer_id && request.status === 'active' && b.status === 'pending';
+  const isWon      = b.is_winner && request.status === 'closed';
+  // b.merchant_id موجود في الـ bid - الزبون والتاجر الفائز يريان زر التواصل
+  const canContact = isWon && (user?.id === request.customer_id || user?.id === b.merchant_id);
+
+  return `
+  <div class="card p-4 mb-3 ${isBest && b.status==='pending' ? 'border-2 border-green-400' : ''} ${b.is_winner ? 'bg-green-50' : ''}">
+    ${isBest && b.status==='pending' ? '<div class="text-xs text-green-700 font-bold mb-2"><i class="fa fa-trophy ml-1"></i>أفضل سعر</div>' : ''}
+    ${b.is_winner ? '<div class="text-xs text-green-700 font-bold mb-2"><i class="fa fa-check-circle ml-1"></i>العرض الفائز</div>' : ''}
+    <div class="flex justify-between items-start">
+      <div>
+        <button class="font-bold text-blue-900 hover:underline text-right" onclick="openMerchantProfile(${b.merchant_id || ''})">
+          ${esc(b.shop_name || b.merchant_name)}
+        </button>
+        <div class="text-xs text-gray-500">${esc(b.merchant_region || '')} • ⭐ ${(b.merchant_rating || 5).toFixed(1)} (${b.rating_count || 0})</div>
+      </div>
+      <div class="text-2xl font-black text-green-700">${(b.price||0).toLocaleString()} <span class="text-sm font-normal text-gray-400">ج</span></div>
+    </div>
+    <p class="text-gray-600 text-sm mt-2 mb-3">${esc(b.description)}</p>
+    <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+      ${b.includes ? `<span class="bg-gray-100 px-2 py-1 rounded-full"><i class="fa fa-check ml-1 text-green-500"></i>${esc(b.includes)}</span>` : ''}
+      <span class="bg-gray-100 px-2 py-1 rounded-full"><i class="fa fa-truck ml-1"></i>توصيل ${b.delivery_days} أيام</span>
+    </div>
+    ${canAccept ? `<button class="btn-primary w-full mt-3 text-sm" onclick="acceptBid(${b.id})"><i class="fa fa-check ml-2"></i>قبول هذا العرض</button>` : ''}
+    ${canContact ? `<button class="btn-outline w-full mt-3 text-sm text-green-700 border-green-400" onclick="openContactInfo(${b.id})"><i class="fa fa-phone-alt ml-2"></i>عرض بيانات التواصل</button>` : ''}
+  </div>`;
+}
+
+function scraperResultCard(s) {
+  const sourceColors = { amazon:'bg-orange-500', noon:'bg-yellow-400 text-gray-800', aliexpress:'bg-red-600' };
+  const sourceNames  = { amazon:'Amazon', noon:'Noon', aliexpress:'AliExpress' };
+  return `
+  <a href="${s.affiliate_url || s.url}" target="_blank" class="card p-4 mb-3 flex items-center gap-4 hover:shadow-md transition-shadow block">
+    ${s.image_url ? `<img src="${s.image_url}" class="w-16 h-16 object-contain rounded-lg border flex-shrink-0" onerror="this.style.display='none'"/>` : ''}
+    <div class="flex-1 min-w-0">
+      <div class="font-semibold text-blue-900 text-sm leading-snug mb-1 line-clamp-2">${s.product_name}</div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-white px-2 py-0.5 rounded-full ${sourceColors[s.source] || 'bg-gray-500'}">${sourceNames[s.source] || s.source}</span>
+        ${s.rating ? `<span class="text-xs text-amber-600">⭐ ${s.rating}</span>` : ''}
+      </div>
+    </div>
+    <div class="text-right flex-shrink-0">
+      <div class="font-black text-blue-900 text-lg">${s.price?.toLocaleString() || '--'}</div>
+      <div class="text-xs text-gray-400">${s.currency}</div>
+      <div class="text-xs text-blue-600 mt-1"><i class="fa fa-external-link-alt"></i></div>
+    </div>
+  </a>`;
+}
+
+function openDrawer(title) {
+  document.getElementById('drawer-title').textContent = title;
+  document.getElementById('drawer-content').innerHTML = '<div class="py-12"><div class="spinner"></div></div>';
+  document.getElementById('drawer-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('drawer').style.transform = 'translateX(0)', 10);
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').style.transform = 'translateX(-100%)';
+  setTimeout(() => document.getElementById('drawer-overlay').classList.add('hidden'), 300);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEALS
+// ═══════════════════════════════════════════════════════
+async function loadDeals() {
+  try {
+    allDeals = await api('/deals');
+    renderDeals(allDeals);
+  } catch (err) {
+    document.getElementById('deals-grid').innerHTML = `<div class="col-span-full text-center text-red-500 py-12">${err.message}</div>`;
+  }
+}
+
+function filterDeals(cat, btn) {
+  document.querySelectorAll('#sec-deals .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = cat === 'all' ? allDeals : allDeals.filter(d => d.category === cat);
+  renderDeals(filtered);
+}
+
+function renderDeals(deals) {
+  const catIcons = { ai_subscription:'🤖', cloud:'☁️', saas:'💼', hosting:'🌐' };
+  document.getElementById('deals-grid').innerHTML = deals.length
+    ? deals.map(d => `
+      <a href="${d.affiliate_url}" target="_blank" class="card deal-card card-hover p-5 block">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="text-3xl">${catIcons[d.category] || '💡'}</div>
+          <div class="flex-1">
+            <div class="font-black text-blue-900">${d.title}</div>
+            <div class="text-xs text-gray-500">${d.provider}</div>
+          </div>
+          ${d.is_featured ? '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold">مميز</span>' : ''}
+        </div>
+        <p class="text-gray-500 text-sm mb-4 leading-relaxed">${d.description || ''}</p>
+        <div class="flex justify-between items-center">
+          <div>
+            ${d.original_price > 0 && d.deal_price < d.original_price
+              ? `<div class="line-through text-gray-400 text-sm">${d.original_price} ${d.currency}</div>
+                 <div class="font-black text-2xl text-green-600">${d.deal_price} <span class="text-sm">${d.currency}</span></div>`
+              : d.deal_price === 0
+                ? '<div class="font-black text-2xl text-green-600">مجاناً 🎉</div>'
+                : `<div class="font-black text-2xl text-blue-900">${d.deal_price} <span class="text-sm">${d.currency}</span></div>`}
+          </div>
+          ${d.discount_pct > 0 ? `<span class="bg-red-100 text-red-700 font-black px-3 py-1 rounded-xl">-${d.discount_pct}%</span>` : ''}
+        </div>
+        <div class="mt-3 btn-primary text-center text-sm">احصل على العرض <i class="fa fa-external-link-alt mr-1"></i></div>
+      </a>`).join('')
+    : '<div class="col-span-full text-center py-12 text-gray-400">لا توجد عروض في هذا التصنيف</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+//  MERCHANT DASHBOARD
+// ═══════════════════════════════════════════════════════
+async function loadMerchantRequests() {
+  const region   = document.getElementById('m-filter-region')?.value   || '';
+  const category = document.getElementById('m-filter-category')?.value || '';
+  document.getElementById('merchant-requests-list').innerHTML = '<div class="col-span-full py-12"><div class="spinner"></div></div>';
+  try {
+    const data = await api(`/requests?region=${region}&category=${category}&status=active&limit=30`);
+    document.getElementById('merchant-requests-list').innerHTML = data.requests.length
+      ? data.requests.map(r => `
+        <div class="card card-hover p-5 cursor-pointer" onclick="openRequest('${r.uuid}')">
+          <div class="flex justify-between mb-2">
+            <span class="font-bold text-blue-900">${r.title}</span>
+            <span class="text-green-700 font-black">${r.budget_max?.toLocaleString()} ج</span>
+          </div>
+          <p class="text-gray-500 text-sm mb-3 line-clamp-2">${r.description}</p>
+          <div class="flex gap-2 text-xs flex-wrap">
+            <span class="bg-gray-100 px-2 py-1 rounded-full"><i class="fa fa-map-marker-alt ml-1"></i>${r.region}</span>
+            <span class="bg-gray-100 px-2 py-1 rounded-full">${CATEGORIES[r.category] || r.category}</span>
+            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full"><i class="fa fa-gavel ml-1"></i>${r.bids_count} عرض</span>
+          </div>
+          <button class="btn-primary w-full mt-3 text-sm" onclick="event.stopPropagation();openModal('newBid',${r.id})">
+            <i class="fa fa-gavel ml-2"></i>قدّم عرضك
+          </button>
+        </div>`).join('')
+      : '<div class="col-span-full text-center py-12 text-gray-400"><i class="fa fa-inbox text-4xl mb-2 block"></i>لا توجد طلبات في منطقتك حالياً</div>';
+  } catch (err) {
+    document.getElementById('merchant-requests-list').innerHTML = `<div class="col-span-full text-red-500 text-center py-12">${err.message}</div>`;
+  }
+}
+
+async function loadMyBids() {
+  document.getElementById('my-bids-list').innerHTML = '<div class="col-span-full py-12"><div class="spinner"></div></div>';
+  try {
+    const bids = await api('/bids/my');
+    document.getElementById('my-bids-list').innerHTML = bids.length
+      ? bids.map(b => `
+        <div class="card p-5 ${b.is_winner ? 'border-2 border-green-400' : ''}">
+          <div class="flex justify-between mb-2">
+            <div class="font-bold text-blue-900 text-sm">${b.request_title}</div>
+            <span class="badge ${b.status === 'accepted' ? 'badge-active' : b.status === 'rejected' ? 'badge-expired' : 'badge-closed'}">${b.status === 'accepted' ? 'مقبول ✅' : b.status === 'rejected' ? 'مرفوض' : 'معلق'}</span>
+          </div>
+          <div class="text-2xl font-black text-green-700 mb-1">${b.price?.toLocaleString()} ج</div>
+          <p class="text-gray-500 text-sm">${b.description}</p>
+          <div class="text-xs text-gray-400 mt-2"><i class="fa fa-map-marker-alt ml-1"></i>${b.region} • ${new Date(b.created_at).toLocaleDateString('ar-EG')}</div>
+          ${b.status === 'pending' ? `<button class="btn-outline text-red-500 border-red-300 w-full mt-3 text-sm" onclick="withdrawBid(${b.id})"><i class="fa fa-trash ml-2"></i>سحب العرض</button>` : ''}
+        </div>`).join('')
+      : '<div class="col-span-full text-center py-12 text-gray-400"><i class="fa fa-gavel text-4xl mb-2 block"></i>لم تقدم أي عروض بعد</div>';
+  } catch (err) {
+    document.getElementById('my-bids-list').innerHTML = `<div class="col-span-full text-red-500 text-center py-12">${err.message}</div>`;
+  }
+}
+
+function merchantTab(tab, btn) {
+  document.querySelectorAll('#sec-merchant .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('merchant-available').classList.toggle('hidden', tab !== 'available');
+  document.getElementById('merchant-mybids').classList.toggle('hidden', tab !== 'mybids');
+  if (tab === 'mybids') loadMyBids();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADMIN STATS
+// ═══════════════════════════════════════════════════════
+async function loadAdminStats() {
+  try {
+    const s = await api('/deals/stats/overview');
+    document.getElementById('admin-stats').innerHTML = [
+      ['إجمالي المستخدمين', s.total_users, 'fa-users', 'blue'],
+      ['التجار المسجلين', s.merchants, 'fa-store', 'green'],
+      ['الصفقات المكتملة', s.closed_auctions, 'fa-check-circle', 'purple'],
+      ['نتائج السكريبر', s.scraper_triggered, 'fa-robot', 'amber'],
+    ].map(([label, val, icon, color]) => `
+      <div class="card p-5 text-center">
+        <i class="fa ${icon} text-2xl text-${color}-600 mb-2"></i>
+        <div class="text-3xl font-black text-${color}-700">${val || 0}</div>
+        <div class="text-gray-500 text-sm mt-1">${label}</div>
+      </div>`).join('');
+
+    document.getElementById('admin-regions').innerHTML = (s.requests_by_region || []).map(r =>
+      `<div class="flex justify-between items-center py-2 border-b last:border-0">
+        <span class="text-gray-700">${r.region}</span>
+        <span class="font-bold text-blue-900">${r.count}</span>
+       </div>`).join('') || '<p class="text-gray-400 text-center py-4">لا بيانات</p>';
+
+    document.getElementById('admin-categories').innerHTML = (s.requests_by_category || []).map(c =>
+      `<div class="flex justify-between items-center py-2 border-b last:border-0">
+        <span class="text-gray-700">${CATEGORIES[c.category] || c.category}</span>
+        <span class="font-bold text-blue-900">${c.count}</span>
+       </div>`).join('') || '<p class="text-gray-400 text-center py-4">لا بيانات</p>';
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════════════════
+function openModal(type, data = null) {
+  if (type === 'notifications')   return openNotificationsModal();
+  if (type === 'review')          return openReviewModal(data);
+  if (type === 'profileSettings') return openProfileSettings();
+  const templates = {
+    login: loginModal(),
+    register: registerModal(),
+    newRequest: newRequestModal(),
+    newBid: newBidModal(data),
+  };
+  document.getElementById('modal-content').innerHTML = templates[type] || '';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  if (type === 'newRequest') setTimeout(() => populateModalRegions('#new-req-region'), 50);
+  if (type === 'register')   setTimeout(() => populateModalRegions('#reg-region'), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.getElementById('modal-content').innerHTML = '';
+}
+
+async function populateModalRegions(sel) {
+  try {
+    const regions = await api('/auth/regions');
+    const el = document.querySelector(sel);
+    if (!el) return;
+    el.innerHTML = '<option value="">-- اختر المنطقة --</option>';
+    regions.forEach(r => el.appendChild(new Option(`${r.name} - ${r.city}`, r.name)));
+  } catch {}
+}
+
+function loginModal() {
+  return `
+  <div class="text-center mb-5"><div class="text-4xl mb-2">🔑</div><h2 class="text-xl font-black text-blue-900">تسجيل الدخول</h2></div>
+  <div class="space-y-3">
+    <input id="l-email" type="email" placeholder="البريد الإلكتروني" class="inp" dir="ltr"/>
+    <input id="l-pass" type="password" placeholder="كلمة المرور" class="inp" dir="ltr"/>
+    <button class="btn-primary w-full py-3 text-base" onclick="doLogin()">دخول <i class="fa fa-arrow-left mr-2"></i></button>
+    <button class="text-gray-500 w-full text-sm hover:text-blue-600" onclick="openModal('register')">ليس لديك حساب؟ <span class="underline">سجّل الآن</span></button>
+  </div>`;
+}
+
+function registerModal() {
+  return `
+  <div class="text-center mb-5"><div class="text-4xl mb-2">👤</div><h2 class="text-xl font-black text-blue-900">إنشاء حساب جديد</h2></div>
+  <div class="space-y-3">
+    <div class="grid grid-cols-2 gap-3">
+      <label class="flex items-center gap-2 border-2 rounded-xl p-3 cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+        <input type="radio" name="role" value="customer" checked/><span class="font-semibold">🛒 زبون</span>
+      </label>
+      <label class="flex items-center gap-2 border-2 rounded-xl p-3 cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+        <input type="radio" name="role" value="merchant"/><span class="font-semibold">🏪 تاجر</span>
+      </label>
+    </div>
+    <input id="reg-name" type="text" placeholder="الاسم الكامل" class="inp"/>
+    <input id="reg-email" type="email" placeholder="البريد الإلكتروني" class="inp" dir="ltr"/>
+    <input id="reg-phone" type="tel" placeholder="رقم الموبايل" class="inp" dir="ltr"/>
+    <input id="reg-shopname" type="text" placeholder="اسم المحل (للتجار فقط)" class="inp"/>
+    <select id="reg-region" class="inp"><option value="">-- اختر المنطقة --</option></select>
+    <input id="reg-telegram" type="text" placeholder="Chat ID تيليجرام (اختياري)" class="inp" dir="ltr"/>
+    <input id="reg-pass" type="password" placeholder="كلمة المرور (6 أحرف على الأقل)" class="inp" dir="ltr"/>
+    <button class="btn-primary w-full py-3 text-base" onclick="doRegister()">إنشاء الحساب <i class="fa fa-check mr-2"></i></button>
+    <button class="text-gray-500 w-full text-sm hover:text-blue-600" onclick="openModal('login')">لديك حساب؟ <span class="underline">ادخل هنا</span></button>
+  </div>`;
+}
+
+function newRequestModal() {
+  return `
+  <div class="text-center mb-5"><div class="text-4xl mb-2">📝</div><h2 class="text-xl font-black text-blue-900">طلب شراء جديد</h2></div>
+  <div class="space-y-3">
+    <input id="nr-title" type="text" placeholder="عنوان الطلب (مثلاً: لاب توب Dell للطلاب)" class="inp"/>
+    <textarea id="nr-desc" placeholder="اكتب المواصفات التفصيلية..." class="inp h-28 resize-none"></textarea>
+    <select id="nr-cat" class="inp">
+      <option value="">-- التصنيف --</option>
+      <option value="electronics">إلكترونيات</option>
+      <option value="appliances">أجهزة منزلية</option>
+      <option value="computers">كمبيوتر ولاب توب</option>
+      <option value="mobiles">موبايلات</option>
+      <option value="furniture">أثاث</option>
+      <option value="automotive">سيارات وقطع غيار</option>
+      <option value="other">أخرى</option>
+    </select>
+    <select id="new-req-region" class="inp"><option value="">-- المنطقة --</option></select>
+    <div class="grid grid-cols-2 gap-3">
+      <input id="nr-bmin" type="number" placeholder="الحد الأدنى (جنيه)" class="inp"/>
+      <input id="nr-bmax" type="number" placeholder="الحد الأقصى *" class="inp"/>
+    </div>
+    <select id="nr-hours" class="inp">
+      <option value="12">مدة الطلب: 12 ساعة</option>
+      <option value="24" selected>مدة الطلب: 24 ساعة</option>
+      <option value="48">مدة الطلب: 48 ساعة</option>
+      <option value="72">مدة الطلب: 72 ساعة</option>
+    </select>
+    <button class="btn-primary w-full py-3 text-base" onclick="submitRequest()">إرسال الطلب وإشعار التجار <i class="fa fa-paper-plane mr-2"></i></button>
+  </div>`;
+}
+
+function newBidModal(requestId) {
+  return `
+  <div class="text-center mb-5"><div class="text-4xl mb-2">💼</div><h2 class="text-xl font-black text-blue-900">تقديم عرض سعر</h2></div>
+  <div class="space-y-3">
+    <input id="bid-price" type="number" placeholder="سعرك (جنيه)" class="inp text-center text-2xl font-black" dir="ltr"/>
+    <textarea id="bid-desc" placeholder="وصف عرضك بالتفصيل..." class="inp h-24 resize-none"></textarea>
+    <input id="bid-includes" type="text" placeholder="يشمل: ضمان، شحن، تركيب..." class="inp"/>
+    <select id="bid-days" class="inp">
+      <option value="1">توصيل خلال يوم واحد</option>
+      <option value="3" selected>توصيل خلال 3 أيام</option>
+      <option value="7">توصيل خلال أسبوع</option>
+      <option value="0">استلام من المحل</option>
+    </select>
+    <button class="btn-accent w-full py-3 text-base" onclick="submitBid(${requestId})">إرسال العرض <i class="fa fa-gavel mr-2"></i></button>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  FORM ACTIONS
+// ═══════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  if (!email || !pass) return toast('يرجى إدخال البريد وكلمة المرور', 'error');
+  const btn = document.querySelector('#modal-content .btn-primary');
+  setLoading(btn, true);
+  try {
+    const res = await api('/auth/login', { method:'POST', body: { email, password: pass } });
+    token = res.token; user = res.user;
+    localStorage.setItem('rmToken', token); localStorage.setItem('rmUser', JSON.stringify(user));
+    closeModal(); applyAuth();
+    toast(`مرحباً ${user.name}! 👋`, 'success');
+    if (user.role === 'merchant') showSection('merchant');
+  } catch (err) { toast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function doRegister() {
+  const role    = document.querySelector('input[name="role"]:checked')?.value;
+  const name    = document.getElementById('reg-name').value.trim();
+  const email   = document.getElementById('reg-email').value.trim();
+  const phone   = document.getElementById('reg-phone').value.trim();
+  const region  = document.getElementById('reg-region').value;
+  const pass    = document.getElementById('reg-pass').value;
+  const shop    = document.getElementById('reg-shopname').value.trim();
+  const tg      = document.getElementById('reg-telegram').value.trim();
+  if (!name || !email || !region || !pass) return toast('يرجى إكمال الحقول المطلوبة', 'error');
+  const btn = document.querySelector('#modal-content .btn-primary');
+  setLoading(btn, true);
+  try {
+    const res = await api('/auth/register', { method:'POST', body: { name, email, phone, password: pass, role, region, shop_name: shop, telegram_chat_id: tg } });
+    token = res.token; user = res.user;
+    localStorage.setItem('rmToken', token); localStorage.setItem('rmUser', JSON.stringify(user));
+    closeModal(); applyAuth();
+    toast(`تم إنشاء حسابك بنجاح يا ${user.name}! 🎉`, 'success');
+  } catch (err) { toast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function submitRequest() {
+  if (!user) return openModal('login');
+  const body = {
+    title:      document.getElementById('nr-title').value.trim(),
+    description:document.getElementById('nr-desc').value.trim(),
+    category:   document.getElementById('nr-cat').value,
+    region:     document.getElementById('new-req-region').value,
+    budget_min: parseFloat(document.getElementById('nr-bmin').value) || null,
+    budget_max: parseFloat(document.getElementById('nr-bmax').value),
+    hours:      parseInt(document.getElementById('nr-hours').value),
+  };
+  if (!body.title || !body.description || !body.category || !body.region || !body.budget_max) {
+    return toast('يرجى إكمال جميع الحقول المطلوبة', 'error');
+  }
+  const btn = document.querySelector('#modal-content .btn-primary');
+  setLoading(btn, true);
+  try {
+    await api('/requests', { method:'POST', body });
+    closeModal(); toast('تم إرسال طلبك وإشعار التجار! 🎉', 'success');
+    loadHomeData(); loadRequests();
+  } catch (err) { toast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function submitBid(requestId) {
+  if (!user) return openModal('login');
+  const body = {
+    request_id:   requestId,
+    price:        parseFloat(document.getElementById('bid-price').value),
+    description:  document.getElementById('bid-desc').value.trim(),
+    includes:     document.getElementById('bid-includes').value.trim(),
+    delivery_days:parseInt(document.getElementById('bid-days').value),
+  };
+  if (!body.price || !body.description) return toast('يرجى إدخال السعر والوصف', 'error');
+  const btn = document.querySelector('#modal-content .btn-accent');
+  setLoading(btn, true);
+  try {
+    await api('/bids', { method:'POST', body });
+    closeModal(); toast('تم إرسال عرضك! سيتم إشعار الزبون فوراً ✅', 'success');
+    const uuid = window._currentRequestUUID;
+    if (uuid) openRequest(uuid);
+  } catch (err) { toast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function acceptBid(bidId) {
+  if (!confirm('هل تريد قبول هذا العرض؟')) return;
+  try {
+    await api(`/bids/${bidId}/accept`, { method:'POST' });
+    toast('تم قبول العرض! سيتواصل معك التاجر قريباً 🎉', 'success');
+    closeDrawer();
+    // عرض نافذة التقييم بعد ثانية
+    setTimeout(async () => {
+      try {
+        const check = await api(`/reviews/can-review/${bidId}`);
+        if (check.canReview) {
+          if (confirm(`هل تريد تقييم ${check.merchant?.shop_name || check.merchant?.name}؟`)) {
+            openModal('review', { bidId, merchantId: check.merchant.id, merchantName: check.merchant.shop_name || check.merchant.name });
+          }
+        }
+      } catch {}
+    }, 1000);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function withdrawBid(bidId) {
+  if (!confirm('هل تريد سحب هذا العرض؟')) return;
+  try {
+    await api(`/bids/${bidId}`, { method:'DELETE' });
+    toast('تم سحب العرض', 'info');
+    loadMyBids();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function triggerScraper(uuid) {
+  if (!confirm('هل تريد تشغيل رادار الأسعار الآن؟ سيبحث في Amazon وNoon وAliExpress')) return;
+  try {
+    await api(`/requests/${uuid}/trigger-scraper`, { method:'POST' });
+    toast('🤖 رادار الأسعار يعمل الآن... ستصلك النتائج على Telegram!', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const colors = { success:'bg-green-600', error:'bg-red-600', info:'bg-gray-800' };
+  const icons  = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle' };
+  const el = document.getElementById('toast');
+  document.getElementById('toast-inner').innerHTML = `<i class="fa ${icons[type]}"></i> ${msg}`;
+  document.getElementById('toast-inner').className = `${colors[type]} text-white px-6 py-3 rounded-xl shadow-2xl font-semibold flex items-center gap-3`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3500);
+}
+
+function timeRemaining(isoDate) {
+  const diff = new Date(isoDate) - new Date();
+  if (diff <= 0) return 'منتهي';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h}س ${m}د` : `${m} دقيقة`;
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.add('hidden-mobile');
+}
+
+// Update countdowns every minute
+setInterval(() => {
+  document.querySelectorAll('.countdown[data-expires]').forEach(el => {
+    el.textContent = timeRemaining(el.dataset.expires);
+  });
+}, 60000);
+
+// ═══════════════════════════════════════════════════════
+//  NOTIFICATION BADGE
+// ═══════════════════════════════════════════════════════
+async function loadNotifCount() {
+  if (!token) return;
+  try {
+    const { count } = await api('/notifications/count');
+    const badge = document.getElementById('notif-badge');
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH DEBOUNCE
+// ═══════════════════════════════════════════════════════
+let _searchTimer = null;
+function debounceSearch() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => loadRequests(), 400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MY REQUESTS SECTION
+// ═══════════════════════════════════════════════════════
+async function loadMyRequests() {
+  if (!user) { openModal('login'); return; }
+  document.getElementById('my-requests-list').innerHTML = '<div class="text-center py-12"><div class="spinner"></div></div>';
+  try {
+    const requests = await api('/requests/my/list');
+    const active    = requests.filter(r => r.status === 'active').length;
+    const closed    = requests.filter(r => r.status === 'closed').length;
+    const totalBids = requests.reduce((a, r) => a + (r.bids_count_live || 0), 0);
+    document.getElementById('mstat-active').textContent = active;
+    document.getElementById('mstat-closed').textContent = closed;
+    document.getElementById('mstat-bids').textContent   = totalBids;
+
+    if (!requests.length) {
+      document.getElementById('my-requests-list').innerHTML = `
+        <div class="card p-10 text-center text-gray-400">
+          <i class="fa fa-clipboard-list text-5xl mb-3 block"></i>
+          <p class="text-lg mb-4">لم تضع أي طلبات بعد</p>
+          <button class="btn-primary" onclick="openModal('newRequest')"><i class="fa fa-plus ml-2"></i>ضع طلبك الأول</button>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('my-requests-list').innerHTML = requests.map(r => {
+      const statusMap  = { active:'badge-active', expired:'badge-expired', closed:'badge-closed', scraping:'badge-scraping' };
+      const statusText = { active:'نشط', expired:'منتهي', closed:'مكتمل', scraping:'جاري البحث...' };
+      return `
+      <div class="card p-5">
+        <div class="flex justify-between items-start mb-2 gap-2">
+          <h3 class="font-bold text-blue-900 leading-snug">${r.title}</h3>
+          <span class="badge ${statusMap[r.status] || 'badge-active'} flex-shrink-0">${statusText[r.status] || r.status}</span>
+        </div>
+        <p class="text-gray-500 text-sm mb-3 line-clamp-2">${r.description}</p>
+        <div class="grid grid-cols-3 gap-3 text-center text-sm mb-3">
+          <div class="bg-blue-50 rounded-xl p-2">
+            <div class="font-black text-blue-900">${(r.budget_max||0).toLocaleString()}</div>
+            <div class="text-gray-400 text-xs">الميزانية</div>
+          </div>
+          <div class="bg-amber-50 rounded-xl p-2">
+            <div class="font-black text-amber-700">${r.bids_count_live || r.bids_count || 0}</div>
+            <div class="text-gray-400 text-xs">عروض</div>
+          </div>
+          <div class="bg-green-50 rounded-xl p-2">
+            <div class="font-black text-green-700">${r.lowest_bid ? r.lowest_bid.toLocaleString() : '--'}</div>
+            <div class="text-gray-400 text-xs">أقل سعر</div>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn-outline flex-1 text-sm py-2" onclick="openRequest('${r.uuid}')">
+            <i class="fa fa-eye ml-1"></i>عرض التفاصيل
+          </button>
+          ${r.status === 'active' && (r.bids_count || 0) === 0 ? `
+          <button class="btn-accent flex-1 text-sm py-2" onclick="triggerScraper('${r.uuid}')">
+            <i class="fa fa-robot ml-1"></i>تشغيل الرادار
+          </button>` : ''}
+          ${r.status === 'active' ? `
+          <button class="text-red-400 hover:text-red-600 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 text-sm" onclick="deleteRequest('${r.uuid}')">
+            <i class="fa fa-trash"></i>
+          </button>` : ''}
+        </div>
+        ${r.status === 'active' ? `<div class="text-xs text-gray-400 mt-2"><i class="fa fa-clock ml-1"></i>ينتهي: ${timeRemaining(r.expires_at)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (err) {
+    document.getElementById('my-requests-list').innerHTML = `<div class="text-red-500 text-center py-12">${err.message}</div>`;
+  }
+}
+
+async function deleteRequest(uuid) {
+  if (!confirm('هل تريد حذف هذا الطلب؟')) return;
+  try {
+    await api(`/requests/${uuid}`, { method: 'DELETE' });
+    toast('تم حذف الطلب', 'info');
+    loadMyRequests();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NOTIFICATIONS MODAL
+// ═══════════════════════════════════════════════════════
+async function openNotificationsModal() {
+  document.getElementById('modal-content').innerHTML = `
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-black text-blue-900"><i class="fa fa-bell ml-2 text-amber-500"></i>الإشعارات</h2>
+      <button class="text-xs text-blue-600 hover:underline" onclick="markAllRead()">تعليم الكل كمقروء</button>
+    </div>
+    <div id="notif-list"><div class="py-8"><div class="spinner"></div></div></div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  try {
+    const { notifications } = await api('/notifications');
+    if (!notifications.length) {
+      document.getElementById('notif-list').innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fa fa-bell-slash text-4xl mb-2 block"></i>لا توجد إشعارات</div>';
+      return;
+    }
+    const icons = { new_request:'fa-tag text-blue-600', new_bid:'fa-gavel text-green-600', bid_accepted:'fa-check-circle text-green-600', scraper_result:'fa-robot text-purple-600' };
+    document.getElementById('notif-list').innerHTML = notifications.map(n => {
+      const meta = JSON.parse(n.metadata || '{}');
+      return `
+      <div class="flex gap-3 py-3 border-b last:border-0 ${!meta.read ? 'bg-blue-50 -mx-2 px-2 rounded-lg' : ''}">
+        <div class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <i class="fa ${icons[n.type] || 'fa-bell text-gray-400'} text-sm"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-gray-800 text-sm">${n.title}</div>
+          <div class="text-xs text-gray-500 mt-0.5">${new Date(n.created_at).toLocaleDateString('ar-EG', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        ${!meta.read ? '<span class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>' : ''}
+      </div>`;
+    }).join('');
+    document.getElementById('notif-badge').classList.add('hidden');
+  } catch (err) {
+    document.getElementById('notif-list').innerHTML = `<div class="text-red-500 text-center py-8">${err.message}</div>`;
+  }
+}
+
+async function markAllRead() {
+  try {
+    await api('/notifications/read-all', { method: 'POST' });
+    document.getElementById('notif-badge').classList.add('hidden');
+    openNotificationsModal();
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  REVIEW MODAL
+// ═══════════════════════════════════════════════════════
+function openReviewModal(data) {
+  document.getElementById('modal-content').innerHTML = `
+    <div class="text-center mb-5">
+      <div class="text-4xl mb-2">⭐</div>
+      <h2 class="text-xl font-black text-blue-900">قيّم التاجر</h2>
+      <p class="text-gray-500 text-sm">${data.merchantName || 'التاجر'}</p>
+    </div>
+    <div class="space-y-4">
+      <div class="text-center">
+        <p class="text-sm text-gray-600 mb-2">اختر تقييمك:</p>
+        <div class="flex justify-center gap-2">
+          ${[1,2,3,4,5].map(s => `<button onclick="selectStar(${s})" class="star-btn text-4xl text-gray-300 hover:text-amber-400 transition-colors">★</button>`).join('')}
+        </div>
+        <input type="hidden" id="review-rating" value="0"/>
+      </div>
+      <textarea id="review-comment" placeholder="اكتب تعليقك (اختياري)..." class="inp h-24 resize-none"></textarea>
+      <button class="btn-primary w-full py-3" onclick="submitReview(${data.bidId}, ${data.merchantId})">
+        <i class="fa fa-paper-plane ml-2"></i>إرسال التقييم
+      </button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function selectStar(n) {
+  document.getElementById('review-rating').value = n;
+  document.querySelectorAll('.star-btn').forEach((btn, i) => {
+    btn.style.color = i < n ? '#f59e0b' : '#d1d5db';
+  });
+}
+
+async function submitReview(bidId, merchantId) {
+  const rating  = parseInt(document.getElementById('review-rating').value);
+  const comment = document.getElementById('review-comment').value.trim();
+  if (!rating) return toast('يرجى اختيار تقييم من 1 إلى 5', 'error');
+  try {
+    await api('/reviews', { method: 'POST', body: { merchant_id: merchantId, bid_id: bidId, rating, comment } });
+    closeModal();
+    toast('شكراً! تم إرسال تقييمك ⭐', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTACT INFO (بعد قبول العرض)
+// ═══════════════════════════════════════════════════════
+async function openContactInfo(bidId) {
+  document.getElementById('modal-content').innerHTML = '<div class="py-12"><div class="spinner"></div></div>';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  try {
+    const { role, contact } = await api(`/profile/contact/${bidId}`);
+    const label = role === 'customer' ? 'بيانات التاجر' : 'بيانات الزبون';
+    document.getElementById('modal-content').innerHTML = `
+      <div class="text-center mb-5">
+        <div class="text-4xl mb-2">${role === 'customer' ? '🏪' : '👤'}</div>
+        <h2 class="text-xl font-black text-blue-900">${label}</h2>
+      </div>
+      <div class="space-y-3">
+        <div class="card p-4 flex items-center gap-3">
+          <i class="fa fa-user text-blue-600 text-xl w-6"></i>
+          <div>
+            <div class="text-xs text-gray-400">الاسم</div>
+            <div class="font-bold">${esc(contact.name)}${contact.shop ? ` — ${esc(contact.shop)}` : ''}</div>
+          </div>
+        </div>
+        ${contact.phone ? `
+        <a href="tel:${esc(contact.phone)}" class="card p-4 flex items-center gap-3 block hover:bg-blue-50">
+          <i class="fa fa-phone text-green-600 text-xl w-6"></i>
+          <div>
+            <div class="text-xs text-gray-400">الهاتف</div>
+            <div class="font-bold" dir="ltr">${esc(contact.phone)}</div>
+          </div>
+        </a>` : ''}
+        ${contact.whatsapp_link ? `
+        <a href="${contact.whatsapp_link}" target="_blank" class="btn-primary w-full py-3 text-center block bg-green-600 hover:opacity-90">
+          <i class="fab fa-whatsapp ml-2 text-lg"></i>تواصل عبر واتساب
+        </a>` : ''}
+        ${contact.telegram ? `
+        <a href="https://t.me/${esc(contact.telegram)}" target="_blank" class="btn-outline w-full py-3 text-center block">
+          <i class="fab fa-telegram ml-2 text-lg text-blue-500"></i>تواصل عبر تيليجرام
+        </a>` : ''}
+      </div>`;
+  } catch (err) {
+    document.getElementById('modal-content').innerHTML = `<div class="text-red-500 text-center py-8">${esc(err.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MERCHANT PROFILE MODAL
+// ═══════════════════════════════════════════════════════
+async function openMerchantProfile(merchantId) {
+  if (!merchantId) return;
+  document.getElementById('modal-content').innerHTML = '<div class="py-12"><div class="spinner"></div></div>';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  try {
+    const m = await api(`/profile/merchant/${merchantId}`);
+    const stars = '★'.repeat(Math.round(m.rating || 5)) + '☆'.repeat(5 - Math.round(m.rating || 5));
+    document.getElementById('modal-content').innerHTML = `
+      <div class="text-center mb-5">
+        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-3">🏪</div>
+        <h2 class="text-xl font-black text-blue-900">${esc(m.shop_name || m.name)}</h2>
+        <p class="text-gray-500 text-sm"><i class="fa fa-map-marker-alt ml-1"></i>${esc(m.region)}</p>
+        <div class="text-amber-400 text-2xl mt-1">${stars}</div>
+        <div class="text-gray-600 text-sm">${(m.rating||5).toFixed(1)} من 5 (${m.rating_count || 0} تقييم)</div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="bg-green-50 rounded-xl p-3 text-center">
+          <div class="text-2xl font-black text-green-700">${m.total_wins || 0}</div>
+          <div class="text-xs text-gray-500">صفقات ناجحة</div>
+        </div>
+        <div class="bg-blue-50 rounded-xl p-3 text-center">
+          <div class="text-2xl font-black text-blue-700">${m.total_bids || 0}</div>
+          <div class="text-xs text-gray-500">عروض مقدمة</div>
+        </div>
+      </div>
+      ${m.reviews?.length ? `
+      <div>
+        <h3 class="font-bold text-blue-900 mb-3">آخر التقييمات</h3>
+        ${m.reviews.slice(0,3).map(r => `
+          <div class="border-b py-3 last:border-0">
+            <div class="flex justify-between items-start">
+              <span class="font-semibold text-sm">${esc(r.reviewer_name)}</span>
+              <span class="text-amber-400">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+            </div>
+            ${r.comment ? `<p class="text-gray-500 text-sm mt-1">${esc(r.comment)}</p>` : ''}
+          </div>`).join('')}
+      </div>` : '<p class="text-center text-gray-400 text-sm py-4">لا توجد تقييمات بعد</p>'}`;
+  } catch (err) {
+    document.getElementById('modal-content').innerHTML = `<div class="text-red-500 text-center py-8">${esc(err.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE SETTINGS MODAL
+// ═══════════════════════════════════════════════════════
+async function openProfileSettings() {
+  document.getElementById('modal-content').innerHTML = '<div class="py-12"><div class="spinner"></div></div>';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  try {
+    const p = await api('/profile');
+    const regions = await api('/auth/regions');
+    const regionOptions = regions.map(r => `<option value="${esc(r.name)}" ${p.region===r.name?'selected':''}>${esc(r.name)} - ${esc(r.city)}</option>`).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-xl font-black text-blue-900">⚙️ إعدادات الحساب</h2>
+      </div>
+      <div class="space-y-3 mb-5">
+        <input id="ps-name"     type="text"  placeholder="الاسم الكامل"    class="inp" value="${esc(p.name||'')}"/>
+        <input id="ps-phone"    type="tel"   placeholder="رقم الموبايل"    class="inp" value="${esc(p.phone||'')}" dir="ltr"/>
+        <input id="ps-shop"     type="text"  placeholder="اسم المحل (تجار)" class="inp" value="${esc(p.shop_name||'')}"/>
+        <select id="ps-region" class="inp"><option value="">-- المنطقة --</option>${regionOptions}</select>
+        <input id="ps-telegram" type="text"  placeholder="Chat ID تيليجرام" class="inp" value="${esc(p.telegram_chat_id||'')}" dir="ltr"/>
+        <button class="btn-primary w-full py-3" onclick="saveProfile()"><i class="fa fa-save ml-2"></i>حفظ البيانات</button>
+      </div>
+      <hr class="my-4"/>
+      <h3 class="font-bold text-gray-700 mb-3">🔑 تغيير كلمة المرور</h3>
+      <div class="space-y-3">
+        <input id="ps-oldpass" type="password" placeholder="كلمة المرور الحالية" class="inp" dir="ltr"/>
+        <input id="ps-newpass" type="password" placeholder="كلمة المرور الجديدة (6+ أحرف)" class="inp" dir="ltr"/>
+        <button class="btn-outline w-full py-2" onclick="changePassword()"><i class="fa fa-lock ml-2"></i>تغيير كلمة المرور</button>
+      </div>`;
+  } catch (err) {
+    document.getElementById('modal-content').innerHTML = `<div class="text-red-500 text-center py-8">${esc(err.message)}</div>`;
+  }
+}
+
+async function saveProfile() {
+  const btn = document.querySelector('#modal-content .btn-primary');
+  setLoading(btn, true);
+  try {
+    const res = await api('/profile', { method:'PUT', body: {
+      name:             document.getElementById('ps-name').value.trim(),
+      phone:            document.getElementById('ps-phone').value.trim(),
+      shop_name:        document.getElementById('ps-shop').value.trim(),
+      region:           document.getElementById('ps-region').value,
+      telegram_chat_id: document.getElementById('ps-telegram').value.trim(),
+    }});
+    user = { ...user, ...res.user };
+    localStorage.setItem('rmUser', JSON.stringify(user));
+    document.getElementById('user-name').textContent = user.name;
+    closeModal();
+    toast('تم حفظ البيانات بنجاح ✅', 'success');
+  } catch (err) { toast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function changePassword() {
+  const oldPass = document.getElementById('ps-oldpass').value;
+  const newPass = document.getElementById('ps-newpass').value;
+  if (!oldPass || !newPass) return toast('يرجى إدخال كلمتي المرور', 'error');
+  try {
+    await api('/profile/password', { method:'PUT', body: { current_password: oldPass, new_password: newPass } });
+    document.getElementById('ps-oldpass').value = '';
+    document.getElementById('ps-newpass').value = '';
+    toast('تم تغيير كلمة المرور ✅', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+</script>
+</body>
+</html>
